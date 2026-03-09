@@ -364,9 +364,8 @@ def run_pipeline(
         {"match_column": "Consignor", "contains": "EMPRESA", "set_column": "Final Consignor Code", "value": "0972"},
         {"match_column": "Consignee", "contains": "EMPRESSA", "set_column": "Final Consignee Code", "value": "0972"},
         {"match_column": "Consignee", "contains": "EMPRESA", "set_column": "Final Consignee Code", "value": "0972"},
-        {"match_column": "Destination Address", "contains": "Debbie Hughes", "set_column": "Final Consignee Code", "value": "0012"},
-        {"match_column": "Destination Address", "contains": "Lisa Simpson", "set_column": "Final Consignee Code", "value": "0210"},
-        {"match_column": "Consignee", "contains": "EMPRESA", "set_column": "Final Consignee Code", "value": "0972"}
+        {"match_column": "Destination Address", "contains": "DEBBIE HUGHES", "set_column": "Final Consignee Code", "value": "0012"},
+        {"match_column": "Destination Address", "contains": "LISA SIMPSON", "set_column": "Final Consignee Code", "value": "0210"},
     ]
 
     for rule in EXCEPTION_RULES:
