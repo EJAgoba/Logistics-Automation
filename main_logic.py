@@ -367,16 +367,6 @@ def run_pipeline(
         {"match_column": "Destination Address", "contains": "DEBBIE HUGHES", "set_column": "Final Consignee Code", "value": "0012"},
         {"match_column": "Destination Address", "contains": "LISA SIMPSON", "set_column": "Final Consignee Code", "value": "0210"},
         {"match_column": "Consignee", "contains": "TERRE", "set_column": "Final Consignee Code", "value": "0370"},
-        {"match_column": "Consignee", "contains": "GULFSTREAM", "set_column": "Responsible Party", "value": "0577"},
-        {"match_column": "Consignee", "contains": "SAIA LTL", "set_column": "Responsible Party", "value": "0577"},
-        {"match_column": "Consignee", "contains": "JB HUNT", "set_column": "Responsible Party", "value": "0577"},
-        {"match_column": "Consignee", "contains": "GUARANTEE ELECTRICAL", "set_column": "Responsible Party", "value": "0577"},
-        {"match_column": "Consignee", "contains": "FERRELLGAS", "set_column": "Responsible Party", "value": "0577"},
-        {"match_column": "Consignee", "contains": "SUNOCO", "set_column": "Responsible Party", "value": "0577"},
-        {"match_column": "Consignee", "contains": "FIRSTFLEET", "set_column": "Responsible Party", "value": "0577"},
-        {"match_column": "Consignee", "contains": "AIRGAS", "set_column": "Responsible Party", "value": "0577"},
-        {"match_column": "Consignee", "contains": "TOYOTA MATERIAL", "set_column": "Responsible Party", "value": "0577"},
-        {"match_column": "Consignee", "contains": "ALLOTMENT", "set_column": "Responsible Party", "value": "0577"},
     ]
 
     for rule in EXCEPTION_RULES:
