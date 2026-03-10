@@ -3,6 +3,8 @@ from coding_matrix import SPECIAL_TYPE_MAPPINGS, Coding_Matrix
 SPECIAL_CODES = {'0K35', '024P', '067N'}
 
 
+targets = ["saia ltl", "gulfstream", "toyota material", "airgas", "allotment", "jb hunt"]
+
 def _first_nonblank(*vals):
     for v in vals:
         if v is None:
@@ -21,7 +23,11 @@ class MatrixMapper:
         consignee_type_norm = str(row.get("Final Consignee Type", "")).strip().upper().replace(" ", "")
         if consignor_type == "MM" and consignee_type_norm == "CADC":
             return "037Q"
-
+        consignee = row.get("Consignee")
+        if isinstance(consignee, str):
+            text = consignee.lower()
+            if any(t in text for t in targets):
+                return "0577"
         # Existing conditions
         if row['Final Consignee Code'] in SPECIAL_CODES and consignee_type_norm in ["USDC", "CADC"] and consignor_type!="LC":
             return row['Final Consignee Code']
