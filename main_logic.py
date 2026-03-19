@@ -49,7 +49,7 @@ def read_uploaded_to_df(uploaded_file) -> pd.DataFrame:
         sio = StringIO(text)
 
         # Try common separators
-        for sep in ["\t", "|", ",", ";"]:
+        for sep in ["\t", "|", ",", ";", r"\s+]:
             sio.seek(0)
             try:
                 df = pd.read_csv(sio, sep=sep, engine="python")
