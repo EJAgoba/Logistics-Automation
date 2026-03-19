@@ -91,15 +91,6 @@ def _pick_col(df: pd.DataFrame, candidates: list[str]) -> Optional[str]:
 
 def standardize_input_columns(df: pd.DataFrame) -> pd.DataFrame:
     # --- Clean stray double quotes from all original text columns
-    for col in accrual_sheet.columns:
-       if accrual_sheet[col].dtype == "object":
-           accrual_sheet[col] = (
-               accrual_sheet[col]
-               .fillna("")
-               .astype(str)
-               .str.strip()
-               .str.replace('"', '', regex=False)
-           )
     """
     Creates canonical columns used by the pipeline regardless of input naming.
     Canonical fields created:
@@ -232,6 +223,15 @@ def run_pipeline(
 ) -> pd.DataFrame:
     accrual_sheet = accrual_sheet.copy()
     accrual_sheet = standardize_input_columns(accrual_sheet)
+    for col in accrual_sheet.columns:
+       if accrual_sheet[col].dtype == "object":
+           accrual_sheet[col] = (
+               accrual_sheet[col]
+               .fillna("")
+               .astype(str)
+               .str.strip()
+               .str.replace('"', '', regex=False)
+           )
 
     # --- Defensive normalization of reference tables (fixes Google Sheets numeric coercion)
     my_loc = cintas_master_data.copy()
