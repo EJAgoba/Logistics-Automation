@@ -443,7 +443,14 @@ def run_pipeline(
         accrual_sheet.rename(columns={"Cost Center_master": "Cost Center EJ"}, inplace=True)
     elif "Cost Center" in accrual_sheet.columns and "Cost Center EJ" not in accrual_sheet.columns:
         accrual_sheet.rename(columns={"Cost Center": "Cost Center EJ"}, inplace=True)
-
+    if "Profit Center" in accrual_sheet.columns:
+       accrual_sheet["Profit Center"] = (
+           accrual_sheet["Profit Center"]
+           .fillna("")
+           .astype(str)
+           .str.strip()
+           .str.replace('"', '', regex=False)
+       )
     # ✅ Profit Center EJ text
     accrual_sheet["Profit Center EJ"] = accrual_sheet.get(
         "Profit Center EJ", pd.Series([""] * len(accrual_sheet))
