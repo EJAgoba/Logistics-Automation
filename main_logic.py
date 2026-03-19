@@ -28,39 +28,47 @@ def read_uploaded_to_df(uploaded_file) -> pd.DataFrame:
             return pd.read_csv(BytesIO(raw_bytes), encoding="utf-8")
         except Exception:
             return pd.read_csv(BytesIO(raw_bytes), encoding="latin1")
-
-    # TXT (SAP exports often UTF-16 with NULL bytes)
+            
     if name.endswith(".txt"):
-        if b"\x00" in raw_bytes:
-            try:
-                text = raw_bytes.decode("utf-16")
-            except Exception:
-                cleaned = raw_bytes.replace(b"\x00", b"")
-                try:
-                    text = cleaned.decode("utf-8")
-                except Exception:
-                    text = cleaned.decode("latin1")
-        else:
-            try:
-                text = raw_bytes.decode("utf-8")
-            except Exception:
-                text = raw_bytes.decode("latin1")
-
-        sio = StringIO(text)
-
-        # Try common separators
-        for sep in ["\t", "|", ",", ";", r"\s+"]:
-            sio.seek(0)
-            try:
-                df = pd.read_csv(sio, sep=sep, engine="python")
-                if df.shape[1] > 1:
-                    return df
-            except Exception:
-                continue
-
-        # Last resort: auto-detect
-        sio.seek(0)
-        return pd.read_csv(sio, sep=None, engine="python")
+       if b"\x00" in raw_bytes:
+           try:
+               text = raw_bytes.decode("utf-16")
+           except Exception:
+               cleaned = raw_bytes.replace(b"\x00", b"")
+               try:
+                   text = cleaned.decode("utf-8")
+               except Exception:
+                   text = cleaned.decode("latin1")
+       else:
+           try:
+               text = raw_bytes.decode("utf-8")
+           except Exception:
+               text = raw_bytes.decode("latin1")
+       sio = StringIO(text)
+       # Try common delimiters first
+       for sep in ["\t", "|", ",", ";"]:
+           sio.seek(0)
+           try:
+               df = pd.read_csv(
+                   sio,
+                   sep=sep,
+                   engine="python",
+                   on_bad_lines="skip",
+                   quoting=3
+               )
+               if df.shape[1] > 1:
+                   return df
+           except Exception:
+               continue
+       # Fixed-width fallback
+       sio.seek(0)
+       try:
+           return pd.read_fwf(sio)
+       except Exception:
+           pass
+       # Final fallback
+       sio.seek(0)
+       return pd.read_csv(sio, sep=None, engine="python", on_bad_lines="skip")
 
     raise ValueError("Unsupported file type. Upload .xlsx, .csv, or .txt")
 
