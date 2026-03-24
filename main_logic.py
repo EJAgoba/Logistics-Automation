@@ -474,15 +474,6 @@ def run_pipeline(
        how="left",
        suffixes=("", "_master"),
     )
-
-    audit_df = audit_df.merge(
-        ml_merge[["Loc Code", "ProfitCtr", "Cost Center"]],
-        left_on="Responsible Party",
-        right_on="Loc Code",
-        how="left",
-        suffixes=("", "_master"),
-    )
-
     # Rename safely
     if "ProfitCtr" in audit_df.columns:
         audit_df.rename(columns={"ProfitCtr": "Profit Center EJ"}, inplace=True)
