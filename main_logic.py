@@ -462,12 +462,18 @@ def run_pipeline(
 
     # --- Profit/Cost center lookup
     ml_merge = master_loc.copy()
-
     if "ProfitCtr" in ml_merge.columns:
-        ml_merge["ProfitCtr"] = ml_merge["ProfitCtr"].fillna("").astype(str).str.strip()
-
+       ml_merge["ProfitCtr"] = ml_merge["ProfitCtr"].fillna("").astype(str).str.strip()
     if "Cost Center" in ml_merge.columns:
-        ml_merge["Cost Center"] = _as_text_keep_zeros(ml_merge["Cost Center"], decimals=5)
+       ml_merge["Cost Center"] = _as_text_keep_zeros(ml_merge["Cost Center"], decimals=5)
+    ml_merge = ml_merge.drop_duplicates(subset=["Loc Code"], keep="first")
+    audit_df = audit_df.merge(
+       ml_merge[["Loc Code", "ProfitCtr", "Cost Center"]],
+       left_on="Responsible Party",
+       right_on="Loc Code",
+       how="left",
+       suffixes=("", "_master"),
+    )
 
     audit_df = audit_df.merge(
         ml_merge[["Loc Code", "ProfitCtr", "Cost Center"]],
