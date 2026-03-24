@@ -228,7 +228,9 @@ def run_pipeline(
     mode_col = _pick_col(accrual_sheet, ["Mode", "mode"])
 
     audit_modes = {"FA", "LT", "M", "O", "U"}
-    audit_shipments = {"772637", "7262515", "192949", "2646"}
+    audit_shipments = {"00950369549", "00004FY646", "000018WA68", "0000302AR0", "00004FY590", "000089V181", "0000R420V3", 
+                       "0000R4864V", "0000RV2559", "0000V10585", "0000W0A387", "0000WA3182", "244978215", "452310449", 
+                       "454238800", "455119006", "455344042"}
 
     if mode_col:
         mode_mask = (
