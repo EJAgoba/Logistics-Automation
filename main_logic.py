@@ -407,6 +407,8 @@ def run_pipeline(
     # =========================
     EXCEPTION_RULES = [
         {"match_column": "Destination Address", "contains": "6001 W", "set_column": "Final Consignee Code", "value": "0021"},
+        {"match_column": "Consignor", "contains": "AVERITT TERMINAL", "set_column": "Final Consignor Code", "value": "0004"},
+        {"match_column": "Consignee", "contains": "AVERITT TERMINAL", "set_column": "Final Consignee Code", "value": "0004"},
         {"match_column": "Consignee", "contains": "VALDEZ", "set_column": "Final Consignee Code", "value": "0K35"},
         {"match_column": "Destination Address", "contains": "ATTN: GARDNER", "set_column": "Final Consignee Code", "value": "0536"},
         {"match_column": "Consignor", "contains": "AVERITT TERMINAL", "set_column": "Final Consignor Code", "value": "0004"},
