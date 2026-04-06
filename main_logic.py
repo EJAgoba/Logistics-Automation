@@ -341,8 +341,8 @@ def run_pipeline(
     audit_df.loc[wipe_consignee, "Extracted Consignee Code"] = ""
 
     # --- Extract from Org/Dest Type columns
-    org_type_col = _pick_col(audit_df, ["Org Type Code", "Org Loc Code", "Origin Type Code", "OrgTypeCode"])
-    dest_type_col = _pick_col(audit_df, ["Dest Type Code", "Dest Loc Code", "Destination Type Code", "DestTypeCode"])
+    org_type_col = _pick_col(audit_df, ["Org Type Code", "Org Loc Code", "Origin Type Code", "OrgTypeCode", "Origin Location Code"])
+    dest_type_col = _pick_col(audit_df, ["Dest Type Code", "Dest Loc Code", "Destination Type Code", "DestTypeCode", "Destination Location Code"])
 
     if org_type_col and dest_type_col:
         tmp = audit_df.apply(
