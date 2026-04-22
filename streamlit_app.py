@@ -215,34 +215,56 @@ if run_main and uploaded_main is not None:
 # -------------------------------
 # WEEKLY AUDIT DETAIL BUILDER (SECONDARY)
 # -------------------------------
+# -------------------------------
+# WEEKLY AUDIT DETAIL BUILDER (SECONDARY)
+# -------------------------------
 st.markdown("#### Weekly Audit Detail Builder (after main automation)")
 st.caption("Attach edited Weekly Audit file (must contain 'USD'/'USA' and 'CAD' tabs)")
 edited_file = st.file_uploader("Drop your edited Weekly Audit file here", type=["xlsx"], key="edited_wa")
 if edited_file is not None:
-   try:
-       xls = pd.ExcelFile(edited_file)
-       names_lower = {s.lower(): s for s in xls.sheet_names}
-       usd_key = names_lower.get("usd") or names_lower.get("usa")
-       cad_key = names_lower.get("cad")
-       if not (usd_key and cad_key):
-           st.error("Workbook must contain both 'USD' (or 'USA') and 'CAD' sheets.")
-       else:
-           usd_df = pd.read_excel(xls, usd_key)
-           cad_df = pd.read_excel(xls, cad_key)
-           st.success(f"Edited workbook loaded: USD rows = {len(usd_df):,}, CAD rows = {len(cad_df):,}.")
-           builder = WeeklyAuditBuilder()
-           selected_run = None
-           if "RunNumber" in usd_df.columns and len(usd_df) > 0:
-               selected_run = usd_df["RunNumber"].iloc[0]
-           usd_sheet = builder.build_currency_sheet(usd_df, "USD", selected_run)
-           cad_sheet = builder.build_currency_sheet(cad_df, "CAD", selected_run)
-           packed = builder.pack_accounting_summary(usd_sheet, cad_sheet)
-           st.download_button(
-               "⬇️ Download Accounting Summary (USD & CAD)",
-               data=packed,
-               file_name=f"Accounting Summary (Run {selected_run or 'auto'}).xlsx",
-               mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-               help="Header = negative of Paid/Paid Amount; details = Total Paid Minus Duty and CAD Tax; Account # is text.",
-           )
-   except Exception as e:
-       st.error(f"Weekly Audit accounting summary failed: {e}")
+  try:
+      xls = pd.ExcelFile(edited_file)
+      names_lower = {s.lower(): s for s in xls.sheet_names}
+      usd_key = names_lower.get("usd") or names_lower.get("usa")
+      cad_key = names_lower.get("cad")
+      if not (usd_key and cad_key):
+          st.error("Workbook must contain both 'USD' (or 'USA') and 'CAD' sheets.")
+      else:
+          usd_df = pd.read_excel(xls, usd_key)
+          cad_df = pd.read_excel(xls, cad_key)
+          st.success(f"Edited workbook loaded: USD rows = {len(usd_df):,}, CAD rows = {len(cad_df):,}.")
+          batch_input = st.text_input(
+              "Batch Number (optional — leave blank to process all rows)",
+              value="",
+              placeholder="e.g. 404",
+              key="batch_number_input",
+          )
+          if batch_input.strip():
+              try:
+                  batch_val = int(batch_input.strip())
+              except ValueError:
+                  batch_val = batch_input.strip()
+              if "BatchNumber" in usd_df.columns:
+                  usd_df = usd_df[usd_df["BatchNumber"] == batch_val].reset_index(drop=True)
+              if "BatchNumber" in cad_df.columns:
+                  cad_df = cad_df[cad_df["BatchNumber"] == batch_val].reset_index(drop=True)
+              if len(usd_df) == 0 and len(cad_df) == 0:
+                  st.warning(f"No rows found for batch number {batch_val}. Check the value or column name.")
+              else:
+st.info(f"Filtered to batch {batch_val} — USD rows: {len(usd_df):,}, CAD rows: {len(cad_df):,}.")
+          builder = WeeklyAuditBuilder()
+          selected_run = None
+          if "RunNumber" in usd_df.columns and len(usd_df) > 0:
+              selected_run = usd_df["RunNumber"].iloc[0]
+          usd_sheet = builder.build_currency_sheet(usd_df, "USD", selected_run)
+          cad_sheet = builder.build_currency_sheet(cad_df, "CAD", selected_run)
+          packed = builder.pack_accounting_summary(usd_sheet, cad_sheet)
+          st.download_button(
+              "⬇️ Download Accounting Summary (USD & CAD)",
+              data=packed,
+              file_name=f"Accounting Summary (Run {selected_run or 'auto'}).xlsx",
+              mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+              help="Header = negative of Paid/Paid Amount; details = Total Paid Minus Duty and CAD Tax; Account # is text.",
+          )
+  except Exception as e:
+      st.error(f"Weekly Audit accounting summary failed: {e}")
