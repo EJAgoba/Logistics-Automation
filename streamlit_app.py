@@ -251,7 +251,7 @@ if edited_file is not None:
               if len(usd_df) == 0 and len(cad_df) == 0:
                   st.warning(f"No rows found for batch number {batch_val}. Check the value or column name.")
               else:
-st.info(f"Filtered to batch {batch_val} — USD rows: {len(usd_df):,}, CAD rows: {len(cad_df):,}.")
+                  st.info(f"Filtered to batch {batch_val} — USD rows: {len(usd_df):,}, CAD rows: {len(cad_df):,}.")
           builder = WeeklyAuditBuilder()
           selected_run = None
           if "RunNumber" in usd_df.columns and len(usd_df) > 0:
