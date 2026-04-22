@@ -212,9 +212,7 @@ if run_main and uploaded_main is not None:
        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
    )
 
-# -------------------------------
-# WEEKLY AUDIT DETAIL BUILDER (SECONDARY)
-# -------------------------------
+
 # -------------------------------
 # WEEKLY AUDIT DETAIL BUILDER (SECONDARY)
 # -------------------------------
@@ -233,38 +231,40 @@ if edited_file is not None:
           usd_df = pd.read_excel(xls, usd_key)
           cad_df = pd.read_excel(xls, cad_key)
           st.success(f"Edited workbook loaded: USD rows = {len(usd_df):,}, CAD rows = {len(cad_df):,}.")
-          batch_input = st.text_input(
-              "Batch Number (optional — leave blank to process all rows)",
+          run_input = st.text_input(
+              "Run Number (required)",
               value="",
               placeholder="e.g. 404",
-              key="batch_number_input",
+              key="run_number_input",
           )
-          if batch_input.strip():
+          if not run_input.strip():
+              st.warning("Enter a run number to continue.")
+          else:
               try:
-                  batch_val = int(batch_input.strip())
+                  run_val = int(run_input.strip())
               except ValueError:
-                  batch_val = batch_input.strip()
-              if "BatchNumber" in usd_df.columns:
-                  usd_df = usd_df[usd_df["BatchNumber"] == batch_val].reset_index(drop=True)
-              if "BatchNumber" in cad_df.columns:
-                  cad_df = cad_df[cad_df["BatchNumber"] == batch_val].reset_index(drop=True)
+                  run_val = run_input.strip()
+              if "RunNumber" in usd_df.columns:
+                  usd_df = usd_df[usd_df["RunNumber"] == run_val].reset_index(drop=True)
+              if "RunNumber" in cad_df.columns:
+                  cad_df = cad_df[cad_df["RunNumber"] == run_val].reset_index(drop=True)
               if len(usd_df) == 0 and len(cad_df) == 0:
-                  st.warning(f"No rows found for batch number {batch_val}. Check the value or column name.")
+                  st.warning(f"No rows found for run number {run_val}. Check the value or column name.")
               else:
-                  st.info(f"Filtered to batch {batch_val} — USD rows: {len(usd_df):,}, CAD rows: {len(cad_df):,}.")
-          builder = WeeklyAuditBuilder()
-          selected_run = None
-          if "RunNumber" in usd_df.columns and len(usd_df) > 0:
-              selected_run = usd_df["RunNumber"].iloc[0]
-          usd_sheet = builder.build_currency_sheet(usd_df, "USD", selected_run)
-          cad_sheet = builder.build_currency_sheet(cad_df, "CAD", selected_run)
-          packed = builder.pack_accounting_summary(usd_sheet, cad_sheet)
-          st.download_button(
-              "⬇️ Download Accounting Summary (USD & CAD)",
-              data=packed,
-              file_name=f"Accounting Summary (Run {selected_run or 'auto'}).xlsx",
-              mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-              help="Header = negative of Paid/Paid Amount; details = Total Paid Minus Duty and CAD Tax; Account # is text.",
-          )
+                  st.info(f"Filtered to run {run_val} — USD rows: {len(usd_df):,}, CAD rows: {len(cad_df):,}.")
+                  builder = WeeklyAuditBuilder()
+                  selected_run = None
+                  if "RunNumber" in usd_df.columns and len(usd_df) > 0:
+                      selected_run = usd_df["RunNumber"].iloc[0]
+                  usd_sheet = builder.build_currency_sheet(usd_df, "USD", selected_run)
+                  cad_sheet = builder.build_currency_sheet(cad_df, "CAD", selected_run)
+                  packed = builder.pack_accounting_summary(usd_sheet, cad_sheet)
+                  st.download_button(
+                      "⬇️ Download Accounting Summary (USD & CAD)",
+                      data=packed,
+                      file_name=f"Weekly Batch Summary ({run_val}).xlsx",
+                      mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                      help="Header = negative of Paid/Paid Amount; details = Total Paid Minus Duty and CAD Tax; Account # is text.",
+                  )
   except Exception as e:
       st.error(f"Weekly Audit accounting summary failed: {e}")
