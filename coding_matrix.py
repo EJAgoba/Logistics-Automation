@@ -37,11 +37,11 @@ SPECIAL_TYPE_MAPPINGS = {
     ('MFG', 'NON-CINTAS'): "DOESN'T EXIST",
     ('MM', 'CC'): "DOESN'T EXIST",
     ('MM', 'MFG'): "DOESN'T EXIST",
-    ('US DC', 'CC'): "DOESN'T EXIST",
 }
 
 #Coding Matrix for Origin and Destination
 Coding_Matrix = {
+    ('US DC', 'CC'): "DESTINATION",
     ("CA DC", 'CA DC'): "DESTINATION",
     ('CA DC', 'FAS DC'): "DESTINATION",
     ('CA DC', 'LC'): "ORIGIN",
