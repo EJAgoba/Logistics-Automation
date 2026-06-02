@@ -252,7 +252,7 @@ if edited_file is not None:
              if len(usd_df) == 0 and len(cad_df) == 0:
                  st.warning(f"No rows found for run number {run_val}. Check the value or column name.")
              else:
-st.info(f"Filtered to run {run_val} — USD rows: {len(usd_df):,}, CAD rows: {len(cad_df):,}.")
+                 st.info(f"Filtered to run {run_val} — USD rows: {len(usd_df):,}, CAD rows: {len(cad_df):,}.")
                  # --- Error Highlighter ---
                  try:
                      usd_df = run_error_highlighter(usd_df)
