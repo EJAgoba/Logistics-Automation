@@ -220,86 +220,66 @@ st.markdown("#### Weekly Audit Detail Builder (after main automation)")
 st.caption("Attach edited Weekly Audit file (must contain 'USD'/'USA' and 'CAD' tabs)")
 edited_file = st.file_uploader("Drop your edited Weekly Audit file here", type=["xlsx"], key="edited_wa")
 if edited_file is not None:
-  try:
-      xls = pd.ExcelFile(edited_file)
-      names_lower = {s.lower(): s for s in xls.sheet_names}
-      usd_key = names_lower.get("usd") or names_lower.get("usa")
-      cad_key = names_lower.get("cad")
-      if not (usd_key and cad_key):
-          st.error("Workbook must contain both 'USD' (or 'USA') and 'CAD' sheets.")
-      else:
-          usd_df = pd.read_excel(xls, usd_key)
-          cad_df = pd.read_excel(xls, cad_key)
-          st.success(f"Edited workbook loaded: USD rows = {len(usd_df):,}, CAD rows = {len(cad_df):,}.")
-          run_input = st.text_input(
-              "Run Number (required)",
-              value="",
-              placeholder="e.g. 404",
-              key="run_number_input",
-          )
-          if not run_input.strip():
-              st.warning("Enter a run number to continue.")
-          else:
-              try:
-                  run_val = int(run_input.strip())
-              except ValueError:
-                  run_val = run_input.strip()
-              if "RunNumber" in usd_df.columns:
-                  usd_df = usd_df[usd_df["RunNumber"] == run_val].reset_index(drop=True)
-              if "RunNumber" in cad_df.columns:
-                  cad_df = cad_df[cad_df["RunNumber"] == run_val].reset_index(drop=True)
-              if len(usd_df) == 0 and len(cad_df) == 0:
-                  st.warning(f"No rows found for run number {run_val}. Check the value or column name.")
-              else:
-                  st.info(f"Filtered to run {run_val} — USD rows: {len(usd_df):,}, CAD rows: {len(cad_df):,}.")
-                  builder = WeeklyAuditBuilder()
-                  selected_run = None
-                  if "RunNumber" in usd_df.columns and len(usd_df) > 0:
-                      selected_run = usd_df["RunNumber"].iloc[0]
-                  usd_sheet = builder.build_currency_sheet(usd_df, "USD", selected_run)
-                  cad_sheet = builder.build_currency_sheet(cad_df, "CAD", selected_run)
-                  packed = builder.pack_accounting_summary(usd_sheet, cad_sheet)
-                  st.download_button(
-                      "⬇️ Download Accounting Summary (USD & CAD)",
-                      data=packed,
-                      file_name=f"Weekly Batch Summary ({run_val}).xlsx",
-                      mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                      help="Header = negative of Paid/Paid Amount; details = Total Paid Minus Duty and CAD Tax; Account # is text.",
-                  )
-  except Exception as e:
-      st.error(f"Weekly Audit accounting summary failed: {e}")
-
-
-# -------------------------------
-# ERROR HIGHLIGHTER (TERTIARY)
-# -------------------------------
-st.markdown("#### Error Highlighter")
-st.caption("Upload a file to validate Cost Center format and Profit Center matching.")
-error_file = st.file_uploader(
-   "Upload file for error check (.xlsx, .xls, .csv)",
-   type=["xlsx", "xls", "csv"],
-   key="error_highlighter_file",
-)
-if error_file is not None:
-   try:
-       from error_highlighter import run_error_highlighter
-       with st.spinner("Reading file..."):
-           eh_df = safe_read_uploaded(error_file)
-       with st.spinner("Running error check..."):
-           result_df = run_error_highlighter(eh_df)
-       error_count = (result_df["Cost Center Error Check"] != "").sum()
-       st.success(f"Done. {error_count:,} row(s) flagged.")
-       st.dataframe(result_df.head(50), use_container_width=True)
-       buffer = io.BytesIO()
-       result_df.to_excel(buffer, index=False)
-       buffer.seek(0)
-       st.download_button(
-           label="⬇ Download Error Report (Excel)",
-           data=buffer,
-           file_name="Cost_Center_Error_Report.xlsx",
-           mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-       )
-   except ValueError as e:
-       st.error(str(e))
-   except Exception as e:
-       st.error(f"Error Highlighter failed: {e}")
+ try:
+     from error_highlighter import run_error_highlighter
+     xls = pd.ExcelFile(edited_file)
+     names_lower = {s.lower(): s for s in xls.sheet_names}
+     usd_key = names_lower.get("usd") or names_lower.get("usa")
+     cad_key = names_lower.get("cad")
+     if not (usd_key and cad_key):
+         st.error("Workbook must contain both 'USD' (or 'USA') and 'CAD' sheets.")
+     else:
+         usd_df = pd.read_excel(xls, usd_key)
+         cad_df = pd.read_excel(xls, cad_key)
+         st.success(f"Edited workbook loaded: USD rows = {len(usd_df):,}, CAD rows = {len(cad_df):,}.")
+         run_input = st.text_input(
+             "Run Number (required)",
+             value="",
+             placeholder="e.g. 404",
+             key="run_number_input",
+         )
+         if not run_input.strip():
+             st.warning("Enter a run number to continue.")
+         else:
+             try:
+                 run_val = int(run_input.strip())
+             except ValueError:
+                 run_val = run_input.strip()
+             if "RunNumber" in usd_df.columns:
+                 usd_df = usd_df[usd_df["RunNumber"] == run_val].reset_index(drop=True)
+             if "RunNumber" in cad_df.columns:
+                 cad_df = cad_df[cad_df["RunNumber"] == run_val].reset_index(drop=True)
+             if len(usd_df) == 0 and len(cad_df) == 0:
+                 st.warning(f"No rows found for run number {run_val}. Check the value or column name.")
+             else:
+st.info(f"Filtered to run {run_val} — USD rows: {len(usd_df):,}, CAD rows: {len(cad_df):,}.")
+                 # --- Error Highlighter ---
+                 try:
+                     usd_df = run_error_highlighter(usd_df)
+                     cad_df = run_error_highlighter(cad_df)
+                     total_errors = (
+                         (usd_df["Cost Center Error Check"] != "").sum()
+                         + (cad_df["Cost Center Error Check"] != "").sum()
+                     )
+                     if total_errors > 0:
+                         st.warning(f"{total_errors:,} Cost Center error(s) flagged across USD and CAD.")
+                     else:
+                         st.success("No Cost Center errors found.")
+                 except ValueError as e:
+                     st.warning(f"Error Highlighter skipped: {e}")
+                 builder = WeeklyAuditBuilder()
+                 selected_run = None
+                 if "RunNumber" in usd_df.columns and len(usd_df) > 0:
+                     selected_run = usd_df["RunNumber"].iloc[0]
+                 usd_sheet = builder.build_currency_sheet(usd_df, "USD", selected_run)
+                 cad_sheet = builder.build_currency_sheet(cad_df, "CAD", selected_run)
+                 packed = builder.pack_accounting_summary(usd_sheet, cad_sheet)
+                 st.download_button(
+                     "⬇️ Download Accounting Summary (USD & CAD)",
+                     data=packed,
+                     file_name=f"Weekly Batch Summary ({run_val}).xlsx",
+                     mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                     help="Header = negative of Paid/Paid Amount; details = Total Paid Minus Duty and CAD Tax; Account # is text.",
+                 )
+ except Exception as e:
+     st.error(f"Weekly Audit accounting summary failed: {e}")
