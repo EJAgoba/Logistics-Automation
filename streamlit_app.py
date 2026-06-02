@@ -268,3 +268,38 @@ if edited_file is not None:
                   )
   except Exception as e:
       st.error(f"Weekly Audit accounting summary failed: {e}")
+
+
+# -------------------------------
+# ERROR HIGHLIGHTER (TERTIARY)
+# -------------------------------
+st.markdown("#### Error Highlighter")
+st.caption("Upload a file to validate Cost Center format and Profit Center matching.")
+error_file = st.file_uploader(
+   "Upload file for error check (.xlsx, .xls, .csv)",
+   type=["xlsx", "xls", "csv"],
+   key="error_highlighter_file",
+)
+if error_file is not None:
+   try:
+       from error_highlighter import run_error_highlighter
+       with st.spinner("Reading file..."):
+           eh_df = safe_read_uploaded(error_file)
+       with st.spinner("Running error check..."):
+           result_df = run_error_highlighter(eh_df)
+       error_count = (result_df["Cost Center Error Check"] != "").sum()
+       st.success(f"Done. {error_count:,} row(s) flagged.")
+       st.dataframe(result_df.head(50), use_container_width=True)
+       buffer = io.BytesIO()
+       result_df.to_excel(buffer, index=False)
+       buffer.seek(0)
+       st.download_button(
+           label="⬇ Download Error Report (Excel)",
+           data=buffer,
+           file_name="Cost_Center_Error_Report.xlsx",
+           mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+       )
+   except ValueError as e:
+       st.error(str(e))
+   except Exception as e:
+       st.error(f"Error Highlighter failed: {e}")
