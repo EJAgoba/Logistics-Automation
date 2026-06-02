@@ -254,7 +254,7 @@ if edited_file is not None:
                if len(usd_df) == 0 and len(cad_df) == 0:
                    st.warning(f"No rows found for run number {run_val}. Check the value or column name.")
                else:
-                   st.info(f"Filtered to run {run_val} — USD rows: {len(usd_df):,}, CAD rows: {len(cad_df):,}.")
+st.info(f"Filtered to run {run_val} — USD rows: {len(usd_df):,}, CAD rows: {len(cad_df):,}.")
                    # --- Initialize session state for editable dfs ---
                    if "wa_usd_edited" not in st.session_state or st.session_state.get("wa_run_val") != run_val:
                        st.session_state["wa_usd_edited"] = run_error_highlighter(usd_df.copy())
@@ -272,33 +272,33 @@ if edited_file is not None:
                            st.markdown(f"**USD — {usd_errors} error(s)**")
                            usd_flagged_idx = usd_checked[usd_checked["Cost Center Error Check"] != ""].index.tolist()
                            usd_edit = st.data_editor(
-                               usd_checked.loc[usd_flagged_idx],
+                               usd_checked.loc[usd_flagged_idx, ["Profit Center", "Cost Center", "Cost Center Error Check"]],
                                key="usd_editor",
                                use_container_width=True,
-                               column_config={
-                                   "Cost Center Error Check": st.column_config.TextColumn(disabled=True),
-                               }
+                               disabled=["Cost Center Error Check"],
                            )
-                           # Write edits back into full df
-                           usd_checked.loc[usd_flagged_idx] = usd_edit
+                           usd_checked.loc[usd_flagged_idx, ["Profit Center", "Cost Center"]] = usd_edit[["Profit Center", "Cost Center"]]
+                           st.session_state["wa_usd_edited"] = usd_checked
                        # --- CAD errors ---
                        if cad_errors > 0:
                            st.markdown(f"**CAD — {cad_errors} error(s)**")
                            cad_flagged_idx = cad_checked[cad_checked["Cost Center Error Check"] != ""].index.tolist()
                            cad_edit = st.data_editor(
-                               cad_checked.loc[cad_flagged_idx],
+                               cad_checked.loc[cad_flagged_idx, ["Profit Center", "Cost Center", "Cost Center Error Check"]],
                                key="cad_editor",
                                use_container_width=True,
-                               column_config={
-                                   "Cost Center Error Check": st.column_config.TextColumn(disabled=True),
-                               }
+                               disabled=["Cost Center Error Check"],
                            )
-                           cad_checked.loc[cad_flagged_idx] = cad_edit
+                           cad_checked.loc[cad_flagged_idx, ["Profit Center", "Cost Center"]] = cad_edit[["Profit Center", "Cost Center"]]
+                           st.session_state["wa_cad_edited"] = cad_checked
                        # --- Re-check button ---
                        if st.button("🔄 Re-check & Build"):
-                           # Drop old error col and re-run check on edited data
-                           usd_rechecked = run_error_highlighter(usd_checked.drop(columns=["Cost Center Error Check"]))
-                           cad_rechecked = run_error_highlighter(cad_checked.drop(columns=["Cost Center Error Check"]))
+                           usd_rechecked = run_error_highlighter(
+                               st.session_state["wa_usd_edited"].drop(columns=["Cost Center Error Check"])
+                           )
+                           cad_rechecked = run_error_highlighter(
+                               st.session_state["wa_cad_edited"].drop(columns=["Cost Center Error Check"])
+                           )
                            st.session_state["wa_usd_edited"] = usd_rechecked
                            st.session_state["wa_cad_edited"] = cad_rechecked
                            st.rerun()
