@@ -231,6 +231,31 @@ if run_main and uploaded_main is not None:
 def read_weekly_audit(file_bytes: bytes, usd_key: str, cad_key: str):
    xls = pd.ExcelFile(io.BytesIO(file_bytes))
    return pd.read_excel(xls, usd_key), pd.read_excel(xls, cad_key)
+
+def _recheck_callback():
+   from error_highlighter import run_error_highlighter
+   usd_checked = st.session_state.get("wa_usd_edited")
+   cad_checked = st.session_state.get("wa_cad_edited")
+   # Commit whatever the user typed into the editors before re-checking
+   usd_edits = st.session_state.get("wa_usd_editor_data")
+   cad_edits = st.session_state.get("wa_cad_editor_data")
+   if usd_checked is not None and usd_edits is not None:
+       flagged_idx = usd_checked[usd_checked["Cost Center Error Check"] != ""].index.tolist()
+       edit_df = pd.DataFrame(usd_edits)
+       if len(edit_df) == len(flagged_idx):
+           usd_checked.loc[flagged_idx, ["Profit Center", "Cost Center"]] = edit_df[["Profit Center", "Cost Center"]].values
+       st.session_state["wa_usd_edited"] = run_error_highlighter(
+           usd_checked.drop(columns=["Cost Center Error Check"], errors="ignore")
+       )
+   if cad_checked is not None and cad_edits is not None:
+       flagged_idx = cad_checked[cad_checked["Cost Center Error Check"] != ""].index.tolist()
+       edit_df = pd.DataFrame(cad_edits)
+       if len(edit_df) == len(flagged_idx):
+           cad_checked.loc[flagged_idx, ["Profit Center", "Cost Center"]] = edit_df[["Profit Center", "Cost Center"]].values
+       st.session_state["wa_cad_edited"] = run_error_highlighter(
+           cad_checked.drop(columns=["Cost Center Error Check"], errors="ignore")
+       )
+
 st.markdown("#### Weekly Audit Detail Builder (after main automation)")
 st.caption("Attach edited Weekly Audit file (must contain 'USD'/'USA' and 'CAD' tabs)")
 edited_file = st.file_uploader("Drop your edited Weekly Audit file here", type=["xlsx"], key="edited_wa")
@@ -275,6 +300,8 @@ if edited_file is not None:
                    if st.session_state.get("wa_state_key") != state_key:
                        st.session_state["wa_usd_edited"] = run_error_highlighter(usd_df.copy())
                        st.session_state["wa_cad_edited"] = run_error_highlighter(cad_df.copy())
+                       st.session_state["wa_usd_editor_data"] = None
+                       st.session_state["wa_cad_editor_data"] = None
                        st.session_state["wa_state_key"] = state_key
                    usd_checked = st.session_state["wa_usd_edited"]
                    cad_checked = st.session_state["wa_cad_edited"]
@@ -284,40 +311,35 @@ if edited_file is not None:
                    if total_errors > 0:
                        st.error(f"⚠️ {total_errors:,} Cost Center error(s) found — fix them below before building the summary.")
                        st.caption("Edit the Profit Center or Cost Center values directly in the table, then click Re-check & Build.")
-                       usd_flagged_idx = []
-                       cad_flagged_idx = []
                        # --- USD errors ---
                        if usd_errors > 0:
                            st.markdown(f"**USD — {usd_errors} error(s)**")
                            usd_flagged_idx = usd_checked[usd_checked["Cost Center Error Check"] != ""].index.tolist()
-                           usd_edit = st.data_editor(
-                               usd_checked.loc[usd_flagged_idx, ["Profit Center", "Cost Center", "Cost Center Error Check"]].copy(),
-                               key="usd_editor",
+                           usd_display = usd_checked.loc[usd_flagged_idx, ["Profit Center", "Cost Center", "Cost Center Error Check"]].copy().reset_index(drop=True)
+                           edited_usd = st.data_editor(
+                               usd_display,
+                               key="usd_data_editor",
                                use_container_width=True,
                                disabled=["Cost Center Error Check"],
                                hide_index=True,
                            )
-                           # Store edits immediately into session state
-                           usd_checked.loc[usd_flagged_idx, ["Profit Center", "Cost Center"]] = usd_edit[["Profit Center", "Cost Center"]].values
-                           st.session_state["wa_usd_edited"] = usd_checked
+                           st.session_state["wa_usd_editor_data"] = edited_usd.to_dict("records")
+                           st.session_state["wa_usd_flagged_idx"] = usd_flagged_idx
                        # --- CAD errors ---
                        if cad_errors > 0:
                            st.markdown(f"**CAD — {cad_errors} error(s)**")
                            cad_flagged_idx = cad_checked[cad_checked["Cost Center Error Check"] != ""].index.tolist()
-                           cad_edit = st.data_editor(
-                               cad_checked.loc[cad_flagged_idx, ["Profit Center", "Cost Center", "Cost Center Error Check"]].copy(),
-                               key="cad_editor",
+                           cad_display = cad_checked.loc[cad_flagged_idx, ["Profit Center", "Cost Center", "Cost Center Error Check"]].copy().reset_index(drop=True)
+                           edited_cad = st.data_editor(
+                               cad_display,
+                               key="cad_data_editor",
                                use_container_width=True,
                                disabled=["Cost Center Error Check"],
                                hide_index=True,
                            )
-                           cad_checked.loc[cad_flagged_idx, ["Profit Center", "Cost Center"]] = cad_edit[["Profit Center", "Cost Center"]].values
-                           st.session_state["wa_cad_edited"] = cad_checked
-                       st.button(
-                           "🔄 Re-check & Build",
-                           key="recheck_btn",
-                           on_click=_recheck_callback,
-                       )
+                           st.session_state["wa_cad_editor_data"] = edited_cad.to_dict("records")
+                           st.session_state["wa_cad_flagged_idx"] = cad_flagged_idx
+                       st.button("🔄 Re-check & Build", on_click=_recheck_callback)
                    else:
                        st.success("✅ No Cost Center errors found. Building summary...")
                        builder = WeeklyAuditBuilder()
