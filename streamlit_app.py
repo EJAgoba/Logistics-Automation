@@ -34,6 +34,17 @@ def _pick_col(df: pd.DataFrame, candidates: list[str]) -> str | None:
  
 def _clean_str_series(s: pd.Series) -> pd.Series:
    return s.fillna("").astype(str).str.strip()
+
+def _recheck_callback():
+   from error_highlighter import run_error_highlighter
+   if "wa_usd_edited" in st.session_state:
+       st.session_state["wa_usd_edited"] = run_error_highlighter(
+           st.session_state["wa_usd_edited"].drop(columns=["Cost Center Error Check"], errors="ignore")
+       )
+   if "wa_cad_edited" in st.session_state:
+       st.session_state["wa_cad_edited"] = run_error_highlighter(
+           st.session_state["wa_cad_edited"].drop(columns=["Cost Center Error Check"], errors="ignore")
+       )
  
 def safe_read_uploaded(uploaded) -> pd.DataFrame:
    """
