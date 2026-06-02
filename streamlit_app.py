@@ -272,42 +272,41 @@ if edited_file is not None:
                    total_errors = usd_errors + cad_errors
                    if total_errors > 0:
                        st.error(f"⚠️ {total_errors:,} Cost Center error(s) found — fix them below before building the summary.")
-                       with st.form("error_fix_form"):
-                           usd_edit = None
-                           cad_edit = None
-                           usd_flagged_idx = []
-                           cad_flagged_idx = []
-                           if usd_errors > 0:
-                               st.markdown(f"**USD — {usd_errors} error(s)**")
-                               usd_flagged_idx = usd_checked[usd_checked["Cost Center Error Check"] != ""].index.tolist()
-                               usd_edit = st.data_editor(
-                                   usd_checked.loc[usd_flagged_idx, ["Profit Center", "Cost Center", "Cost Center Error Check"]].copy(),
-                                   key="usd_editor",
-                                   use_container_width=True,
-                                   disabled=["Cost Center Error Check"],
-                               )
-                           if cad_errors > 0:
-                               st.markdown(f"**CAD — {cad_errors} error(s)**")
-                               cad_flagged_idx = cad_checked[cad_checked["Cost Center Error Check"] != ""].index.tolist()
-                               cad_edit = st.data_editor(
-                                   cad_checked.loc[cad_flagged_idx, ["Profit Center", "Cost Center", "Cost Center Error Check"]].copy(),
-                                   key="cad_editor",
-                                   use_container_width=True,
-                                   disabled=["Cost Center Error Check"],
-                               )
-                           submitted = st.form_submit_button("🔄 Re-check & Build")
-                       if submitted:
-                           if usd_edit is not None:
-                               usd_checked.loc[usd_flagged_idx, ["Profit Center", "Cost Center"]] = usd_edit[["Profit Center", "Cost Center"]].values
-                           if cad_edit is not None:
-                               cad_checked.loc[cad_flagged_idx, ["Profit Center", "Cost Center"]] = cad_edit[["Profit Center", "Cost Center"]].values
-                           st.session_state["wa_usd_edited"] = run_error_highlighter(
-                               usd_checked.drop(columns=["Cost Center Error Check"])
+                       st.caption("Edit the Profit Center or Cost Center values directly in the table, then click Re-check & Build.")
+                       usd_flagged_idx = []
+                       cad_flagged_idx = []
+                       # --- USD errors ---
+                       if usd_errors > 0:
+                           st.markdown(f"**USD — {usd_errors} error(s)**")
+                           usd_flagged_idx = usd_checked[usd_checked["Cost Center Error Check"] != ""].index.tolist()
+                           usd_edit = st.data_editor(
+                               usd_checked.loc[usd_flagged_idx, ["Profit Center", "Cost Center", "Cost Center Error Check"]].copy(),
+                               key="usd_editor",
+                               use_container_width=True,
+                               disabled=["Cost Center Error Check"],
+                               hide_index=True,
                            )
-                           st.session_state["wa_cad_edited"] = run_error_highlighter(
-                               cad_checked.drop(columns=["Cost Center Error Check"])
+                           # Store edits immediately into session state
+                           usd_checked.loc[usd_flagged_idx, ["Profit Center", "Cost Center"]] = usd_edit[["Profit Center", "Cost Center"]].values
+                           st.session_state["wa_usd_edited"] = usd_checked
+                       # --- CAD errors ---
+                       if cad_errors > 0:
+                           st.markdown(f"**CAD — {cad_errors} error(s)**")
+                           cad_flagged_idx = cad_checked[cad_checked["Cost Center Error Check"] != ""].index.tolist()
+                           cad_edit = st.data_editor(
+                               cad_checked.loc[cad_flagged_idx, ["Profit Center", "Cost Center", "Cost Center Error Check"]].copy(),
+                               key="cad_editor",
+                               use_container_width=True,
+                               disabled=["Cost Center Error Check"],
+                               hide_index=True,
                            )
-                           st.rerun()
+                           cad_checked.loc[cad_flagged_idx, ["Profit Center", "Cost Center"]] = cad_edit[["Profit Center", "Cost Center"]].values
+                           st.session_state["wa_cad_edited"] = cad_checked
+                       st.button(
+                           "🔄 Re-check & Build",
+                           key="recheck_btn",
+                           on_click=_recheck_callback,
+                       )
                    else:
                        st.success("✅ No Cost Center errors found. Building summary...")
                        builder = WeeklyAuditBuilder()
