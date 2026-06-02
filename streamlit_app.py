@@ -254,7 +254,7 @@ if edited_file is not None:
                if len(usd_df) == 0 and len(cad_df) == 0:
                    st.warning(f"No rows found for run number {run_val}. Check the value or column name.")
                else:
-                   st.info(f"Filtered to run {run_val} — USD rows: {len(usd_df):,}, CAD rows: {len(cad_df):,}.")
+st.info(f"Filtered to run {run_val} — USD rows: {len(usd_df):,}, CAD rows: {len(cad_df):,}.")
                    # --- Initialize session state for editable dfs ---
                    if "wa_usd_edited" not in st.session_state or st.session_state.get("wa_run_val") != run_val:
                        st.session_state["wa_usd_edited"] = run_error_highlighter(usd_df.copy())
