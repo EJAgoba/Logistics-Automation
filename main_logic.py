@@ -421,6 +421,7 @@ def run_pipeline(
         {"match_column": "Consignee", "contains": "ANGELA JOHNSON", "set_column": "Final Consignee Code", "value": "0128"},
         {"match_column": "Consignee", "contains": "BELINDA LOCKHART HALL", "set_column": "Final Consignee Code", "value": "0004"},
         {"match_column": "Destination Address", "contains": "DAVE N. 11F", "set_column": "Final Consignee Code", "value": "011F"},
+        {"match_column": "Destination Address", "contains": "ATTN TO: ADAM PAWLOWICZ", "set_column": "Final Consignee Code", "value": "0055"},
         {"match_column": "Destination Address", "contains": "GEORGE FREEMAN", "set_column": "Final Consignee Code", "value": "0280"},
         {"match_column": "Consignee", "contains": "BRENDA LOCKHARTHALL", "set_column": "Final Consignee Code", "value": "0004"},
         {"match_column": "Consignor", "contains": "AVERITT TERMINAL", "set_column": "Final Consignor Code", "value": "0004"},
