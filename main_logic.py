@@ -156,25 +156,40 @@ def clean_blank(s: pd.Series) -> pd.Series:
 
 def _normalize_loc_code(v) -> str:
     """
-    Normalizes location codes so purely numeric values become 4 chars.
+    Normalizes location codes so purely numeric values become 4 chars,
+    and ALWAYS returns a clean string (never a float-looking string).
     Examples:
-      95 -> 0095
-      972 -> 0972
-      0095 -> 0095
-      011K -> 011K
+      95       -> 0095
+      972      -> 0972
+      0095     -> 0095
+      011K     -> 011K
+      55.0     -> 0055   (float artifact from Excel, now handled)
+      "  55 "  -> 0055
+      nan/None -> ""
     """
     if v is None:
         return ""
-    s = str(v).strip().upper()
-    if not s:
+    if isinstance(v, float) and pd.isna(v):
         return ""
+
+    s = str(v).strip().upper()
+    if not s or s in {"NAN", "NONE", "<NA>"}:
+        return ""
+
+    # Strip a trailing ".0" / ".00" etc. that comes from pandas reading
+    # whole-number codes as float64 (e.g. 55.0, 536.0)
+    if re.fullmatch(r"\d+\.0+", s):
+        s = s.split(".")[0]
+
     if re.fullmatch(r"\d+", s):
         return s.zfill(4)
     return s
 
 
 def _normalize_loc_code_series(s: pd.Series) -> pd.Series:
-    return s.fillna("").astype(str).map(_normalize_loc_code)
+    # Force to string FIRST (covers int64/float64 dtype columns) before
+    # any per-value normalization runs, so "55.0" never sneaks through.
+    return s.astype(str).map(_normalize_loc_code)
 
 
 def _as_text_keep_zeros(series: pd.Series, decimals: int = 5) -> pd.Series:
@@ -268,6 +283,12 @@ def run_pipeline(
         return non_audit_df
 
     # --- Defensive normalization of reference tables
+    # IMPORTANT: every "Loc Code" column (in every reference table) is forced
+    # to a normalized STRING right here, at the top, before anything else
+    # touches it. This is the single source of truth for code formatting,
+    # so downstream lookups (extraction, address match, type map, exceptions)
+    # are all comparing the same string format -- no float artifacts, no
+    # int64 dtype, no inconsistent padding.
     my_loc = cintas_master_data.copy()
     master_loc = cintas_master_data_2.copy()
     all_codes = cintas_location_codes.copy()
@@ -278,7 +299,7 @@ def run_pipeline(
         master_loc["Loc Code"] = _normalize_loc_code_series(master_loc["Loc Code"])
 
     codes_col = "Codes" if "Codes" in all_codes.columns else all_codes.columns[0]
-    all_codes[codes_col] = all_codes[codes_col].fillna("").astype(str).str.strip().str.upper()
+    all_codes[codes_col] = _normalize_loc_code_series(all_codes[codes_col])
 
     # --- Init services
     location_finder = Location_Codes_Finder(
@@ -388,14 +409,14 @@ def run_pipeline(
     # --- Final location codes
     audit_df["Final Consignor Code"] = (
         clean_blank(audit_df["Extracted Consignor Code"])
-        .fillna(clean_blank(audit_df["Org Type Consignor Code"]))
         .fillna(clean_blank(audit_df["Addr_Lookup_Consignor_Code"]))
+        .fillna(clean_blank(audit_df["Org Type Consignor Code"]))
         .fillna("NON-CINTAS")
     )
     audit_df["Final Consignee Code"] = (
         clean_blank(audit_df["Extracted Consignee Code"])
-        .fillna(clean_blank(audit_df["Dest Type Consignee Code"]))
         .fillna(clean_blank(audit_df["Addr_Lookup_Consignee_Code"]))
+        .fillna(clean_blank(audit_df["Dest Type Consignee Code"]))
         .fillna("NON-CINTAS")
     )
 
@@ -405,6 +426,13 @@ def run_pipeline(
     # =========================
     # Exceptions
     # =========================
+    # NOTE: These rules are intentionally self-contained. They are a final,
+    # manual override layer that does NOT depend on cintas_master_data_2
+    # (master_loc) or any other reference table existing or having a
+    # matching row. If a row's Consignor/Consignee/Destination Address text
+    # matches, the Final Code is force-set to the literal value below --
+    # full stop. Nothing later in this function should be able to silently
+    # revert that value back to "NON-CINTAS".
     EXCEPTION_RULES = [
         {"match_column": "Consignee", "contains": "MGA", "set_column": "Final Consignee Code", "value": "099H"},
         {"match_column": "Consignee", "contains": "HONDURAS", "set_column": "Final Consignee Code", "value": "0957"},
@@ -453,6 +481,15 @@ def run_pipeline(
         {"match_column": "Consignee", "contains": "TERRE", "set_column": "Final Consignee Code", "value": "0370"},
     ]
 
+    # Track exactly which (row, target column) pairs were force-set by an
+    # exception rule, so later steps (type mapping, etc.) can be checked
+    # against this if needed, and so we never accidentally re-normalize
+    # away an exact literal value.
+    exception_locked = {
+        "Final Consignor Code": pd.Series(False, index=audit_df.index),
+        "Final Consignee Code": pd.Series(False, index=audit_df.index),
+    }
+
     for rule in EXCEPTION_RULES:
         col = rule["match_column"]
         if col not in audit_df.columns:
@@ -462,16 +499,48 @@ def run_pipeline(
             .fillna("")
             .astype(str)
             .str.upper()
-            .str.contains(rule["contains"], na=False)
+            .str.contains(re.escape(rule["contains"]), na=False, regex=True)
         )
-        audit_df.loc[match_series, rule["set_column"]] = rule["value"]
+        target_col = rule["set_column"]
+        audit_df.loc[match_series, target_col] = rule["value"]
+        exception_locked[target_col] = exception_locked[target_col] | match_series
 
+    # Normalize codes (this is safe/idempotent for exception values like
+    # "0055" since they're already in canonical 4-char form -- but we
+    # restore the literal exception value afterward regardless, so this
+    # step can NEVER be the reason an exception gets overwritten).
     audit_df["Final Consignor Code"] = _normalize_loc_code_series(audit_df["Final Consignor Code"])
     audit_df["Final Consignee Code"] = _normalize_loc_code_series(audit_df["Final Consignee Code"])
 
+    for rule in EXCEPTION_RULES:
+        col = rule["match_column"]
+        if col not in audit_df.columns:
+            continue
+        target_col = rule["set_column"]
+        locked_mask = exception_locked[target_col]
+        audit_df.loc[locked_mask, target_col] = audit_df.loc[locked_mask, target_col].where(
+            audit_df.loc[locked_mask, target_col] == "",  # no-op guard, real restore below
+            audit_df.loc[locked_mask, target_col],
+        )
+
+    # Hard re-apply: guarantee the exact literal value wins, no matter what
+    # normalization or anything upstream did to that cell.
+    for rule in EXCEPTION_RULES:
+        col = rule["match_column"]
+        if col not in audit_df.columns:
+            continue
+        match_series = (
+            audit_df[col]
+            .fillna("")
+            .astype(str)
+            .str.upper()
+            .str.contains(re.escape(rule["contains"]), na=False, regex=True)
+        )
+        audit_df.loc[match_series, rule["set_column"]] = rule["value"]
+
     # --- Type code mapping
-    if "Loc Code" in master_loc.columns:
-        master_loc["Loc Code"] = _normalize_loc_code_series(master_loc["Loc Code"])
+    # Loc Code was already normalized to string at the top of this function.
+    master_loc["Loc Code"] = _normalize_loc_code_series(master_loc["Loc Code"])
 
     master_code_to_type = dict(
         zip(
@@ -487,6 +556,14 @@ def run_pipeline(
         audit_df["Final Consignee Code"].astype(str).str.upper().map(master_code_to_type).fillna("NON-CINTAS")
     )
 
+    # IMPORTANT: "Final Consignor/Consignee Type" reflects whether the code
+    # exists in cintas_master_data_2. This is informational/derived data
+    # ONLY -- it must never be allowed to feed back and overwrite
+    # "Final Consignor/Consignee Code" itself. The two lines above are the
+    # only place Type is computed, and nothing below this point touches
+    # Final Consignor Code / Final Consignee Code again except the
+    # Responsible Party / GL logic, which reads the code but doesn't alter it.
+
     # --- Responsible party
     mapper = MatrixMapper()
     audit_df["Responsible Party"] = audit_df.apply(mapper.determine_profit_center, axis=1)
@@ -494,16 +571,23 @@ def run_pipeline(
     # --- Profit/Cost center lookup
     ml_merge = master_loc.copy()
     if "ProfitCtr" in ml_merge.columns:
-       ml_merge["ProfitCtr"] = ml_merge["ProfitCtr"].fillna("").astype(str).str.strip()
+        ml_merge["ProfitCtr"] = ml_merge["ProfitCtr"].fillna("").astype(str).str.strip()
     if "Cost Center" in ml_merge.columns:
-       ml_merge["Cost Center"] = _as_text_keep_zeros(ml_merge["Cost Center"], decimals=5)
+        ml_merge["Cost Center"] = _as_text_keep_zeros(ml_merge["Cost Center"], decimals=5)
+    ml_merge["Loc Code"] = _normalize_loc_code_series(ml_merge["Loc Code"])
     ml_merge = ml_merge.drop_duplicates(subset=["Loc Code"], keep="first")
+
+    # Make sure the join key on the audit side is also a clean normalized
+    # string (it already should be, but this guarantees the merge dtype
+    # matches exactly -- string to string, never int/float to string).
+    audit_df["Responsible Party"] = _normalize_loc_code_series(audit_df["Responsible Party"])
+
     audit_df = audit_df.merge(
-       ml_merge[["Loc Code", "ProfitCtr", "Cost Center"]],
-       left_on="Responsible Party",
-       right_on="Loc Code",
-       how="left",
-       suffixes=("", "_master"),
+        ml_merge[["Loc Code", "ProfitCtr", "Cost Center"]],
+        left_on="Responsible Party",
+        right_on="Loc Code",
+        how="left",
+        suffixes=("", "_master"),
     )
     # Rename safely
     if "ProfitCtr" in audit_df.columns:
