@@ -388,14 +388,14 @@ def run_pipeline(
     # --- Final location codes
     audit_df["Final Consignor Code"] = (
         clean_blank(audit_df["Extracted Consignor Code"])
+        .fillna(clean_blank(audit_df["ddr_Lookup_Consignor_Code"]))
         .fillna(clean_blank(audit_df["Org Type Consignor Code"]))
-        .fillna(clean_blank(audit_df["Addr_Lookup_Consignor_Code"]))
         .fillna("NON-CINTAS")
     )
     audit_df["Final Consignee Code"] = (
         clean_blank(audit_df["Extracted Consignee Code"])
-        .fillna(clean_blank(audit_df["Dest Type Consignee Code"]))
         .fillna(clean_blank(audit_df["Addr_Lookup_Consignee_Code"]))
+        .fillna(clean_blank(audit_df["Dest Type Consignee Code"]))
         .fillna("NON-CINTAS")
     )
 
