@@ -478,7 +478,16 @@ def run_pipeline(
         {"match_column": "Destination Address", "contains": "1111 N", "set_column": "Final Consignee Code", "value": "0017"},
         {"match_column": "Destination Address", "contains": "1111 NORTHWEST", "set_column": "Final Consignee Code", "value": "0017"},
         {"match_column": "Destination Address", "contains": "1100 REMINGTON", "set_column": "Final Consignee Code", "value": "0022"},
+        {"match_column": "Destination Address", "contains": "CHERI WILLS", "set_column": "Final Consignee Code", "value": "0524"},
+        {"match_column": "Destination Address", "contains": "TRICIA SMITH", "set_column": "Final Consignee Code", "value": "0701"},
+        {"match_column": "Destination Address", "contains": "ROSELINE LICIANO", "set_column": "Final Consignee Code", "value": "0756"},
+        {"match_column": "Destination Address", "contains": "3605 WHITE", "set_column": "Final Consignee Code", "value": "030R"},
         {"match_column": "Consignee", "contains": "TERRE", "set_column": "Final Consignee Code", "value": "0370"},
+        {"match_column": "Consignee", "contains": "DAISY MEJIA", "set_column": "Final Consignee Code", "value": "082J"},
+        {"match_column": "Consignee", "contains": "F78", "set_column": "Final Consignee Code", "value": "0F78"},
+        {"match_column": "Consignee", "contains": "38R", "set_column": "Final Consignee Code", "value": "038R"},
+        {"match_column": "Consignee", "contains": "73Q", "set_column": "Final Consignee Code", "value": "073Q"},
+        {"match_column": "Consignee", "contains": "KELLY TAYLOR", "set_column": "Final Consignee Code", "value": "0071"},
     ]
 
     # Track exactly which (row, target column) pairs were force-set by an
