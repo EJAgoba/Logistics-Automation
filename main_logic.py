@@ -487,7 +487,16 @@ def run_pipeline(
         {"match_column": "Consignee", "contains": "F78", "set_column": "Final Consignee Code", "value": "0F78"},
         {"match_column": "Consignee", "contains": "38R", "set_column": "Final Consignee Code", "value": "038R"},
         {"match_column": "Consignee", "contains": "73Q", "set_column": "Final Consignee Code", "value": "073Q"},
-        {"match_column": "Consignee", "contains": "KELLY TAYLOR", "set_column": "Final Consignee Code", "value": "0071"},
+        {"match_column": "Consignee", "contains": "ADAM LEE", "set_column": "Final Consignee Code", "value": "0184"},
+        {"match_column": "Consignee", "contains": "ALISIA PULELLA", "set_column": "Final Consignee Code", "value": "0K95"},
+        {"match_column": "Consignee", "contains": "CAROL WALLINGER", "set_column": "Final Consignee Code", "value": "0044"},
+        {"match_column": "Consignee", "contains": "CASEY LAYMAN", "set_column": "Final Consignee Code", "value": "0336"},
+        {"match_column": "Consignee", "contains": "CINTAS CORPORATION LOCATION G4", "set_column": "Final Consignee Code", "value": "0G44"},
+        {"match_column": "Consignee", "contains": "DAISY MEJIA", "set_column": "Final Consignee Code", "value": "0577"},
+        {"match_column": "Consignee", "contains": "DARREN BURICH", "set_column": "Final Consignee Code", "value": "0310"},
+        {"match_column": "Consignee", "contains": "JOSEPHINE MANCILLA", "set_column": "Final Consignee Code", "value": "0067"},
+        {"match_column": "Consignee", "contains": "K90", "set_column": "Final Consignee Code", "value": "0K90"},
+        {"match_column": "Consignee", "contains": "JOE WILLIAMS", "set_column": "Final Consignee Code", "value": "001M"},
     ]
 
     # Track exactly which (row, target column) pairs were force-set by an
