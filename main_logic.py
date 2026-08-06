@@ -192,6 +192,27 @@ def _normalize_loc_code_series(s: pd.Series) -> pd.Series:
     return s.astype(str).map(_normalize_loc_code)
 
 
+# Location codes that should be IGNORED when they come from the
+# Org Type / Dest Type columns. G59 is a corporate/roll-up style code that
+# doesn't identify a real physical location, so a row carrying it in the
+# type column should fall through to the address lookup instead.
+G59_VARIANTS = {"G59", "0G59"}
+
+
+def _is_g59(v) -> bool:
+    s = str(v or "").strip().upper().replace(" ", "")
+    return s in G59_VARIANTS
+
+
+def _blank_g59_series(s: pd.Series) -> pd.Series:
+    """
+    Returns the series with any G59 / 0G59 value replaced by "".
+    Used ONLY on the Org Type / Dest Type derived codes so that those rows
+    behave exactly as if the type column had been empty.
+    """
+    return s.map(lambda v: "" if _is_g59(v) else v)
+
+
 def _as_text_keep_zeros(series: pd.Series, decimals: int = 5) -> pd.Series:
     """
     Convert numeric-ish values into text while preserving trailing zeros.
@@ -243,8 +264,8 @@ def run_pipeline(
     mode_col = _pick_col(accrual_sheet, ["Mode", "mode"])
 
     audit_modes = {"FA", "LT", "M", "O", "U", "LTL", "FTL", "TL"}
-    audit_shipments = {"00950369549", "00004FY646", "000018WA68", "0000302AR0", "00004FY590", "000089V181", "0000R420V3", 
-                       "0000R4864V", "0000RV2559", "0000V10585", "0000W0A387", "0000WA3182", "244978215", "452310449", 
+    audit_shipments = {"00950369549", "00004FY646", "000018WA68", "0000302AR0", "00004FY590", "000089V181", "0000R420V3",
+                       "0000R4864V", "0000RV2559", "0000V10585", "0000W0A387", "0000WA3182", "244978215", "452310449",
                        "454238800", "455119006", "455344042"}
 
     if mode_col:
@@ -384,6 +405,15 @@ def run_pipeline(
     audit_df["Org Type Consignor Code"] = _normalize_loc_code_series(audit_df["Org Type Consignor Code"])
     audit_df["Dest Type Consignee Code"] = _normalize_loc_code_series(audit_df["Dest Type Consignee Code"])
 
+    # --- G59 suppression on the type-derived codes
+    # If the Org Type / Dest Type column resolved to "G59" (or "0G59"), that
+    # is NOT a usable physical location, so we blank it out here. Because the
+    # fallback chain below is Extracted -> Type -> Address, blanking it means
+    # the row automatically drops through to the address lookup instead of
+    # locking in G59.
+    audit_df["Org Type Consignor Code"] = _blank_g59_series(audit_df["Org Type Consignor Code"])
+    audit_df["Dest Type Consignee Code"] = _blank_g59_series(audit_df["Dest Type Consignee Code"])
+
     # --- Address looked-up codes
     audit_df["Addr_Lookup_Consignor_Code"] = _normalize_loc_code_series(
         audit_df["Consignor_Combined_Address"].apply(location_finder.extract_from_address)
@@ -407,6 +437,11 @@ def run_pipeline(
     audit_df.loc[is_suite_mississauga & consignor_0897, "Addr_Lookup_Consignee_Code"] = "0897"
 
     # --- Final location codes
+    # PRIORITY ORDER (highest to lowest):
+    #   1. Extracted code (from the Consignor / Consignee name text)
+    #   2. Org Type / Dest Type code   <-- G59 already blanked above
+    #   3. Address lookup
+    #   4. "NON-CINTAS"
     audit_df["Final Consignor Code"] = (
         clean_blank(audit_df["Extracted Consignor Code"])
         .fillna(clean_blank(audit_df["Org Type Consignor Code"]))
@@ -529,17 +564,6 @@ def run_pipeline(
     # step can NEVER be the reason an exception gets overwritten).
     audit_df["Final Consignor Code"] = _normalize_loc_code_series(audit_df["Final Consignor Code"])
     audit_df["Final Consignee Code"] = _normalize_loc_code_series(audit_df["Final Consignee Code"])
-
-    for rule in EXCEPTION_RULES:
-        col = rule["match_column"]
-        if col not in audit_df.columns:
-            continue
-        target_col = rule["set_column"]
-        locked_mask = exception_locked[target_col]
-        audit_df.loc[locked_mask, target_col] = audit_df.loc[locked_mask, target_col].where(
-            audit_df.loc[locked_mask, target_col] == "",  # no-op guard, real restore below
-            audit_df.loc[locked_mask, target_col],
-        )
 
     # Hard re-apply: guarantee the exact literal value wins, no matter what
     # normalization or anything upstream did to that cell.
