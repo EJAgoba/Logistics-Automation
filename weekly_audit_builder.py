@@ -83,7 +83,7 @@ class WeeklyAuditBuilder:
 
             "Run Number": str(selected_run or (df["RunNumber"].astype(str).str.strip().iloc[0] if not df.empty else "")),
 
-            "Profit Center": "686",
+            "Profit Center": "879",
 
             "Cost Center": "",
 
